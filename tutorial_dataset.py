@@ -29,11 +29,16 @@ class MyDataset(Dataset):
         source = cv2.cvtColor(source, cv2.COLOR_BGR2RGB)
         target = cv2.cvtColor(target, cv2.COLOR_BGR2RGB)
 
-        # Normalize source images to [0, 1].
+        # Normalize source images to [0, 1], binary label, h,w,c
         source = source.astype(np.float32) / 255.0
 
-        # Normalize target images to [-1, 1].
+        # Normalize target images to [-1, 1], h,w,c
         target = (target.astype(np.float32) / 127.5) - 1.0
 
         return dict(jpg=target, txt=prompt, hint=source)
 
+
+if __name__ == '__main__':
+    ds = MyDataset()
+    print(len(ds))
+    first = ds[0]

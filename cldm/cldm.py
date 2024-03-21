@@ -145,21 +145,21 @@ class ControlNet(nn.Module):
         self.zero_convs = nn.ModuleList([self.make_zero_conv(model_channels)])
 
         self.input_hint_block = TimestepEmbedSequential(
-            conv_nd(dims, hint_channels, 16, 3, padding=1),
+            conv_nd(dims, hint_channels, 16, 3, padding=1), # b, 16, h, w
             nn.SiLU(),
-            conv_nd(dims, 16, 16, 3, padding=1),
+            conv_nd(dims, 16, 16, 3, padding=1), 
             nn.SiLU(),
-            conv_nd(dims, 16, 32, 3, padding=1, stride=2),
+            conv_nd(dims, 16, 32, 3, padding=1, stride=2), # b, 32, h/2, w/2
             nn.SiLU(),
             conv_nd(dims, 32, 32, 3, padding=1),
             nn.SiLU(),
-            conv_nd(dims, 32, 96, 3, padding=1, stride=2),
+            conv_nd(dims, 32, 96, 3, padding=1, stride=2), # b, 96, h/4, w/4
             nn.SiLU(),
             conv_nd(dims, 96, 96, 3, padding=1),
             nn.SiLU(),
-            conv_nd(dims, 96, 256, 3, padding=1, stride=2),
+            conv_nd(dims, 96, 256, 3, padding=1, stride=2), # b, 256, h/8, w/8
             nn.SiLU(),
-            zero_module(conv_nd(dims, 256, model_channels, 3, padding=1))
+            zero_module(conv_nd(dims, 256, model_channels, 3, padding=1)) # b, 256, h/8, w/8
         )
 
         self._feature_size = model_channels
@@ -282,17 +282,21 @@ class ControlNet(nn.Module):
         return TimestepEmbedSequential(zero_module(conv_nd(self.dims, channels, channels, 1, padding=0)))
 
     def forward(self, x, hint, timesteps, context, **kwargs):
-        t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
-        emb = self.time_embed(t_emb)
 
+        # x_noisy = [4, 4, 16, 25], hint  = [4, 7, 128, 204], t = [4], context = [4, 77, 1024]}
+        t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
+        emb = self.time_embed(t_emb) # [4, 1280]
+
+        # guided_hint = [4, 320, 16, 26], combine hint image, time condition, and text condition
         guided_hint = self.input_hint_block(hint, emb, context)
 
         outs = []
 
-        h = x.type(self.dtype)
+        h = x.type(self.dtype) # [4, 4, 16, 25], this step converts x to float32
         for module, zero_conv in zip(self.input_blocks, self.zero_convs):
             if guided_hint is not None:
                 h = module(h, emb, context)
+                #TODO: problem is h is not the same shape as guided_hint, guided_hint is torch.Size([4, 320, 16, 26]), h is torch.Size([4, 64, 16, 25]), need to check self.input_hint_block and module
                 h += guided_hint
                 guided_hint = None
             else:
@@ -330,10 +334,12 @@ class ControlLDM(LatentDiffusion):
         diffusion_model = self.model.diffusion_model
 
         cond_txt = torch.cat(cond['c_crossattn'], 1)
+        # x_noisy = [4, 4, 16, 25], hint  = [4, 7, 128, 204], t = [4], context = [4, 77, 1024]}
 
         if cond['c_concat'] is None:
             eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=None, only_mid_control=self.only_mid_control)
         else:
+            # check what is x_noisy, hint
             control = self.control_model(x=x_noisy, hint=torch.cat(cond['c_concat'], 1), timesteps=t, context=cond_txt)
             control = [c * scale for c, scale in zip(control, self.control_scales)]
             eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=control, only_mid_control=self.only_mid_control)

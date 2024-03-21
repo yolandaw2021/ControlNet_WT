@@ -2,13 +2,13 @@ from share import *
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
-from tutorial_dataset import MyDataset
+from ithaca365 import Ithaca365
 from cldm.logger import ImageLogger
 from cldm.model import create_model, load_state_dict
 
 
 # Configs
-resume_path = './models/control_sd21_ini.ckpt'
+resume_path = './models/control_sd21_ithaca365.ckpt'
 batch_size = 4
 logger_freq = 300
 learning_rate = 1e-5
@@ -25,8 +25,10 @@ model.only_mid_control = only_mid_control
 
 
 # Misc
-dataset = MyDataset()
-dataloader = DataLoader(dataset, num_workers=0, batch_size=batch_size, shuffle=True)
+dataset = Ithaca365('/scratch/amodal_Ithaca365/')
+dataloader = DataLoader(dataset, num_workers=1, batch_size=batch_size, shuffle=True)
+# TODO: use wandb instead of image logger
+
 logger = ImageLogger(batch_frequency=logger_freq)
 trainer = pl.Trainer(gpus=1, precision=32, callbacks=[logger])
 
