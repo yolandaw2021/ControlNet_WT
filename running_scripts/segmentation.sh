@@ -1,0 +1,1 @@
+conda activate control; python /home/yw583/workspace/ControlNet_WT/tutorial_train_sd21.py

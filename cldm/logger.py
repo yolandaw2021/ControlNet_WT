@@ -6,6 +6,7 @@ import torchvision
 from PIL import Image
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.distributed import rank_zero_only
+import matplotlib.pyplot as plt
 
 
 class ImageLogger(Callback):
@@ -23,21 +24,33 @@ class ImageLogger(Callback):
         self.log_on_batch_idx = log_on_batch_idx
         self.log_images_kwargs = log_images_kwargs if log_images_kwargs else {}
         self.log_first_step = log_first_step
+        self.cmap = plt.colormaps['viridis']
 
     @rank_zero_only
     def log_local(self, save_dir, split, images, global_step, current_epoch, batch_idx):
         root = os.path.join(save_dir, "image_log", split)
+        result = []
+        filename = "{:06}_e-{:06}_b-{:06}.png".format(global_step, current_epoch, batch_idx)
         for k in images:
+            if k == "conditioning":
+                continue
             grid = torchvision.utils.make_grid(images[k], nrow=4)
             if self.rescale:
                 grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
-            grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1)
-            grid = grid.numpy()
+            grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1) # h,w,c
+            if k == "control":
+                grid = torch.argmax(grid, dim=2)
+                grid = self.cmap(grid.numpy()/7.0)
+                grid = grid[:, :, :3]
+            else:
+                grid = grid.numpy()
             grid = (grid * 255).astype(np.uint8)
-            filename = "{}_gs-{:06}_e-{:06}_b-{:06}.png".format(k, global_step, current_epoch, batch_idx)
             path = os.path.join(root, filename)
             os.makedirs(os.path.split(path)[0], exist_ok=True)
-            Image.fromarray(grid).save(path)
+            result.append(grid)
+        result = np.concatenate(result, axis=0)
+        Image.fromarray(result).save(path)
+        
 
     def log_img(self, pl_module, batch, batch_idx, split="train"):
         check_idx = batch_idx  # if self.log_on_batch_idx else pl_module.global_step
@@ -73,4 +86,5 @@ class ImageLogger(Callback):
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
         if not self.disabled:
-            self.log_img(pl_module, batch, batch_idx, split="train")
+            # TODO: change the folder name here
+            self.log_img(pl_module, batch, batch_idx, split="segmentation_512")

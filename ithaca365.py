@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 
 class Ithaca365(Dataset):
-    def __init__(self, data_dir, mode="train", image_size=128):
+    def __init__(self, data_dir, mode="train", image_size=512):
         # original size: (600, 960)
         self.data_dir = data_dir
         self.mode = mode
@@ -56,12 +56,12 @@ class Ithaca365(Dataset):
         prompt = self.prompt + weather_cond + " weather."
 
         # visualization
-        cmap = plt.colormaps['viridis']
-        check_mask = cmap(mask/7.0)
-        check_mask = (check_mask * 255).astype(np.uint8)
-        Image.fromarray(check_mask).save('./scratch/check_mask.png')
-        check_img = ((target+1) / 2 * 255).astype(np.uint8)
-        Image.fromarray(check_img).save('./scratch/check_img.png')
+        # cmap = plt.colormaps['viridis']
+        # check_mask = cmap(mask/7.0)
+        # check_mask = (check_mask * 255).astype(np.uint8)
+        # Image.fromarray(check_mask).save('./scratch/check_mask.png')
+        # check_img = ((target+1) / 2 * 255).astype(np.uint8)
+        # Image.fromarray(check_img).save('./scratch/check_img.png')
     
         # target : h,w,3; source: h,w,7; prompt: str
         return dict(jpg=target, txt=prompt, hint=source)
