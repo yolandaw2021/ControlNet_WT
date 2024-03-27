@@ -39,9 +39,22 @@ class ImageLogger(Callback):
                 grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
             grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1) # h,w,c
             if k == "control":
+                neighbors = grid[:, :, 7:]
+                neighbors = (neighbors + 1.0) / 2.0
+                grid = grid[:, :, 0:7]
                 grid = torch.argmax(grid, dim=2)
                 grid = self.cmap(grid.numpy()/7.0)
-                grid = grid[:, :, :3]
+                grid = grid[:, :, :3] # get rid of alpha channel
+
+                # separate neighbors in to b,h,w,3 images, and concatenate them into an image (n*h, b*w, 3), store it somewhere
+                n = int(neighbors.shape[2]/3)
+                neighbor_images = neighbors.split(3, dim=2) # n*(h,w,3)
+                neighbor_images = torch.concat(neighbor_images, dim=0) # (n*h, b*w, 3)
+                neighbor_images = neighbor_images.numpy()
+                neighbor_images = (neighbor_images * 255).astype(np.uint8)
+                path = os.path.join(root, filename.replace(".png", "_neighbors.png"))
+                os.makedirs(os.path.split(path)[0], exist_ok=True)
+                Image.fromarray(neighbor_images).save(path)
             else:
                 grid = grid.numpy()
             grid = (grid * 255).astype(np.uint8)
@@ -87,4 +100,4 @@ class ImageLogger(Callback):
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
         if not self.disabled:
             # TODO: change the folder name here
-            self.log_img(pl_module, batch, batch_idx, split="segmentation_512")
+            self.log_img(pl_module, batch, batch_idx, split="3_neighbor")
