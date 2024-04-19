@@ -39,11 +39,11 @@ class ImageLogger(Callback):
                 grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
             grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1) # h,w,c
             if k == "control":
-                neighbors = grid[:, :, 7:]
+                neighbors = grid[:, :, 8:]
                 neighbors = (neighbors + 1.0) / 2.0
-                grid = grid[:, :, 0:7]
+                grid = grid[:, :, 0:8]
                 grid = torch.argmax(grid, dim=2)
-                grid = self.cmap(grid.numpy()/7.0)
+                grid = self.cmap(grid.numpy()/8.0)
                 grid = grid[:, :, :3] # get rid of alpha channel
 
                 # separate neighbors in to b,h,w,3 images, and concatenate them into an image (n*h, b*w, 3), store it somewhere
@@ -100,4 +100,4 @@ class ImageLogger(Callback):
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
         if not self.disabled:
             # TODO: change the folder name here
-            self.log_img(pl_module, batch, batch_idx, split="3_neighbor")
+            self.log_img(pl_module, batch, batch_idx, split="3_neighbor_bordered")

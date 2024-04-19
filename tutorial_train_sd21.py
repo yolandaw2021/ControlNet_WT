@@ -11,7 +11,7 @@ from cldm.model import create_model, load_state_dict
 # python tool_add_control_sd21.py ./models/v2-1_512-ema-pruned.ckpt ./models/control_sd21_ini.ckpt
 
 # Configs
-resume_path = './models/control_sd21_3neighbor.ckpt'
+resume_path = './models/control_sd21_3neighbor_instance.ckpt'
 batch_size = 4
 logger_freq = 300
 learning_rate = 1e-5
